@@ -1,4 +1,3 @@
--- init.sql
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
@@ -8,7 +7,7 @@ CREATE TABLE IF NOT EXISTS products (
 
 CREATE TABLE IF NOT EXISTS orders (
   id SERIAL PRIMARY KEY,
-  status VARCHAR(50) NOT NULL,
+  status VARCHAR(50) NOT NULL, -- Pending, Reserved, Paid, Cancelled, Expired, Failed, Refunded
   total_amount DECIMAL(10, 2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -30,9 +29,3 @@ CREATE TABLE IF NOT EXISTS payments (
   amount DECIMAL(10, 2) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
-INSERT INTO products (name, price, stock) VALUES 
-('Laptop', 999.99, 10),
-('Wireless Mouse', 25.50, 50),
-('Mechanical Keyboard', 85.00, 20),
-('Monitor', 200.00, 15);
