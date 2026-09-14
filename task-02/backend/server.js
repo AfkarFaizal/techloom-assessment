@@ -1,0 +1,246 @@
+require("dotenv").config();
+const express = require("express");
+const cors = require("cors");
+const { Pool } = require("pg");
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
+// Auto-expire reservations background job (every 30 seconds)
+setInterval(async () => {
+  try {
+    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const result = await pool.query(
+      `SELECT id FROM orders WHERE status = 'Reserved' AND updated_at < $1`,
+      [fiveMinsAgo]
+    );
+
+    for (let row of result.rows) {
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [row.id]);
+        for (let item of items.rows) {
+          await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+        }
+        await client.query("UPDATE orders SET status = 'Expired', updated_at = NOW() WHERE id = $1", [row.id]);
+        await client.query("COMMIT");
+      } catch (err) {
+        await client.query("ROLLBACK");
+      } finally {
+        client.release();
+      }
+    }
+  } catch (err) {}
+}, 30000);
+
+// Product Listing with search
+app.get("/products", async (req, res) => {
+  try {
+    const { search } = req.query;
+    let query = "SELECT * FROM products";
+    let params = [];
+    if (search) {
+      query += " WHERE name ILIKE $1";
+      params.push(`%${search}%`);
+    }
+    query += " ORDER BY id";
+    const result = await pool.query(query, params);
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Product Details
+app.get("/products/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query("SELECT * FROM products WHERE id = $1", [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: "Product not found" });
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/products", async (req, res) => {
+  try {
+    const { name, price, stock } = req.body;
+    const result = await pool.query(
+      "INSERT INTO products (name, price, stock) VALUES ($1, $2, $3) RETURNING *",
+      [name, price, stock]
+    );
+    res.json(result.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Checkout
+app.post("/checkout", async (req, res) => {
+  const { cart } = req.body; 
+  if (!cart || cart.length === 0) return res.status(400).json({ error: "Cart is empty" });
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    let totalAmount = 0;
+    
+    for (let item of cart) {
+      const productRes = await client.query(
+        "SELECT id, price, stock FROM products WHERE id = $1 FOR UPDATE",
+        [item.productId]
+      );
+      if (productRes.rows.length === 0) throw new Error(`Product ${item.productId} not found`);
+      const product = productRes.rows[0];
+      if (product.stock < item.quantity) throw new Error(`Not enough stock for product ${item.productId}`);
+      totalAmount += product.price * item.quantity;
+    }
+    
+    const orderRes = await client.query(
+      "INSERT INTO orders (status, total_amount) VALUES ('Reserved', $1) RETURNING *",
+      [totalAmount]
+    );
+    const orderId = orderRes.rows[0].id;
+    
+    for (let item of cart) {
+      const productRes = await client.query("SELECT price FROM products WHERE id = $1", [item.productId]);
+      await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [item.quantity, item.productId]);
+      await client.query(
+        "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)",
+        [orderId, item.productId, item.quantity, productRes.rows[0].price]
+      );
+    }
+    await client.query("COMMIT");
+    res.json({ orderId, status: "Reserved", totalAmount });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Payment
+app.post("/payment", async (req, res) => {
+  const { orderId, idempotencyKey, outcome } = req.body;
+  
+  if (!orderId || !idempotencyKey || !outcome) return res.status(400).json({ error: "Missing required fields" });
+  
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const existingPayment = await client.query("SELECT * FROM payments WHERE idempotency_key = $1", [idempotencyKey]);
+    if (existingPayment.rows.length > 0) {
+      await client.query("ROLLBACK");
+      return res.json({ message: "Duplicate payment attempt", payment: existingPayment.rows[0] });
+    }
+    
+    const orderRes = await client.query("SELECT status, total_amount FROM orders WHERE id = $1 FOR UPDATE", [orderId]);
+    if (orderRes.rows.length === 0) throw new Error("Order not found");
+    const order = orderRes.rows[0];
+    if (order.status !== "Reserved") throw new Error(`Order cannot be paid. Current status: ${order.status}`);
+    if (outcome === "timeout") throw new Error("Payment gateway timeout");
+    
+    const paymentStatus = outcome === "success" ? "Success" : "Failed";
+    const newOrderStatus = outcome === "success" ? "Paid" : "Failed";
+    
+    const paymentRecord = await client.query(
+      "INSERT INTO payments (order_id, idempotency_key, status, amount) VALUES ($1, $2, $3, $4) RETURNING *",
+      [orderId, idempotencyKey, paymentStatus, order.total_amount]
+    );
+    
+    await client.query("UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2", [newOrderStatus, orderId]);
+    
+    if (newOrderStatus === "Failed") {
+      const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [orderId]);
+      for (let item of items.rows) {
+        await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+      }
+    }
+    await client.query("COMMIT");
+    res.json({ message: `Payment ${paymentStatus}`, payment: paymentRecord.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Order History
+app.get("/orders", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM orders ORDER BY created_at DESC");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cancel Order
+app.post("/orders/:id/cancel", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const orderRes = await client.query("SELECT status FROM orders WHERE id = $1 FOR UPDATE", [id]);
+    if (orderRes.rows.length === 0) throw new Error("Order not found");
+    
+    const status = orderRes.rows[0].status;
+    if (status !== "Reserved") throw new Error(`Cannot cancel order in ${status} status`);
+    
+    await client.query("UPDATE orders SET status = 'Cancelled', updated_at = NOW() WHERE id = $1", [id]);
+    
+    const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [id]);
+    for (let item of items.rows) {
+      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+    }
+    
+    await client.query("COMMIT");
+    res.json({ message: "Order cancelled" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Refund Order
+app.post("/orders/:id/refund", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const orderRes = await client.query("SELECT status FROM orders WHERE id = $1 FOR UPDATE", [id]);
+    if (orderRes.rows.length === 0) throw new Error("Order not found");
+    
+    const status = orderRes.rows[0].status;
+    if (status !== "Paid") throw new Error(`Cannot refund order in ${status} status`);
+    
+    await client.query("UPDATE orders SET status = 'Refunded', updated_at = NOW() WHERE id = $1", [id]);
+    
+    const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [id]);
+    for (let item of items.rows) {
+      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+    }
+    
+    await client.query("COMMIT");
+    res.json({ message: "Order refunded" });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+const PORT = process.env.PORT || 5001; // use different port if running both
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
