@@ -9,6 +9,9 @@ function App() {
   const [cart, setCart] = useState([]);
   const [orderStatus, setOrderStatus] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  
+  // Admin form state
+  const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '' });
 
   useEffect(() => {
     fetchProducts();
@@ -20,6 +23,30 @@ function App() {
       setProducts(res.data);
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API_URL}/products`, {
+        name: newProduct.name,
+        price: parseFloat(newProduct.price),
+        stock: parseInt(newProduct.stock, 10)
+      });
+      setNewProduct({ name: '', price: '', stock: '' });
+      fetchProducts();
+    } catch (err) {
+      alert(`Error: ${err.response?.data?.error || err.message}`);
+    }
+  };
+
+  const handleDeleteProduct = async (id) => {
+    try {
+      await axios.delete(`${API_URL}/products/${id}`);
+      fetchProducts();
+    } catch (err) {
+      alert(`Error: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -63,12 +90,25 @@ function App() {
     <div className="App">
       <h1>POS Order & Inventory System</h1>
       
+      <div className="admin-section">
+        <h2>Admin: Add Product</h2>
+        <form onSubmit={handleCreateProduct}>
+          <input type="text" placeholder="Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} required />
+          <input type="number" step="0.01" placeholder="Price" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} required />
+          <input type="number" placeholder="Stock" value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} required />
+          <button type="submit">Add Product</button>
+        </form>
+      </div>
+
       <div className="products">
         <h2>Products</h2>
         {products.map(p => (
           <div key={p.id} className="product-card">
             <span>{p.name} - ${p.price} (Stock: {p.stock})</span>
-            <button onClick={() => addToCart(p)} disabled={p.stock === 0}>Add to Cart</button>
+            <div>
+              <button onClick={() => addToCart(p)} disabled={p.stock === 0}>Add to Cart</button>
+              <button onClick={() => handleDeleteProduct(p.id)} style={{marginLeft: '10px', background: 'red', color: 'white'}}>Delete</button>
+            </div>
           </div>
         ))}
       </div>

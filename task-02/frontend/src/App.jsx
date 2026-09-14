@@ -8,14 +8,21 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 function ProductList({ addToCart }) {
   const [products, setProducts] = useState([]);
   const [search, setSearch] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [inStock, setInStock] = useState(false);
 
   useEffect(() => {
     fetchProducts();
-  }, [search]);
+  }, [search, minPrice, maxPrice, inStock]);
 
   const fetchProducts = async () => {
     try {
-      const res = await axios.get(`${API_URL}/products?search=${search}`);
+      let query = `?search=${search}`;
+      if (minPrice) query += `&minPrice=${minPrice}`;
+      if (maxPrice) query += `&maxPrice=${maxPrice}`;
+      if (inStock) query += `&inStock=true`;
+      const res = await axios.get(`${API_URL}/products${query}`);
       setProducts(res.data);
     } catch (err) {
       console.error(err);
@@ -25,12 +32,33 @@ function ProductList({ addToCart }) {
   return (
     <div>
       <h2>Products</h2>
-      <input 
-        type="text" 
-        placeholder="Search products..." 
-        value={search} 
-        onChange={(e) => setSearch(e.target.value)} 
-      />
+      <div className="filters" style={{ marginBottom: '20px', display: 'flex', gap: '10px' }}>
+        <input 
+          type="text" 
+          placeholder="Search products..." 
+          value={search} 
+          onChange={(e) => setSearch(e.target.value)} 
+        />
+        <input 
+          type="number" 
+          placeholder="Min Price" 
+          value={minPrice} 
+          onChange={(e) => setMinPrice(e.target.value)} 
+        />
+        <input 
+          type="number" 
+          placeholder="Max Price" 
+          value={maxPrice} 
+          onChange={(e) => setMaxPrice(e.target.value)} 
+        />
+        <label>
+          <input 
+            type="checkbox" 
+            checked={inStock} 
+            onChange={(e) => setInStock(e.target.checked)} 
+          /> In Stock Only
+        </label>
+      </div>
       <div className="products">
         {products.map(p => (
           <div key={p.id} className="product-card">
@@ -165,7 +193,7 @@ function Orders() {
   return (
     <div>
       <h2>Order History</h2>
-      <table>
+      <table style={{ width: '100%', textAlign: 'left', marginTop: '20px' }}>
         <thead>
           <tr>
             <th>ID</th>
@@ -210,7 +238,7 @@ function App() {
   return (
     <Router>
       <div className="App">
-        <nav>
+        <nav style={{ padding: '10px', background: '#eee', marginBottom: '20px' }}>
           <Link to="/">Products</Link> | 
           <Link to="/checkout"> Checkout ({cart.reduce((a, c) => a + c.quantity, 0)})</Link> | 
           <Link to="/orders"> Orders</Link>

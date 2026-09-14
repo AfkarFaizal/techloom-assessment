@@ -14,10 +14,8 @@ const pool = new Pool({
 // Auto-expire reservations background job (every 30 seconds)
 setInterval(async () => {
   try {
-    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     const result = await pool.query(
-      `SELECT id FROM orders WHERE status = 'Reserved' AND updated_at < $1`,
-      [fiveMinsAgo]
+      `SELECT id FROM orders WHERE status = 'Reserved' AND updated_at < NOW() - INTERVAL '5 minutes'`
     );
 
     for (let row of result.rows) {
@@ -39,16 +37,33 @@ setInterval(async () => {
   } catch (err) {}
 }, 30000);
 
-// Product Listing with search
+// Product Listing with search and filters
 app.get("/products", async (req, res) => {
   try {
-    const { search } = req.query;
-    let query = "SELECT * FROM products";
+    const { search, minPrice, maxPrice, inStock } = req.query;
+    let query = "SELECT * FROM products WHERE 1=1";
     let params = [];
+    let paramIndex = 1;
+
     if (search) {
-      query += " WHERE name ILIKE $1";
+      query += ` AND name ILIKE $${paramIndex}`;
       params.push(`%${search}%`);
+      paramIndex++;
     }
+    if (minPrice) {
+      query += ` AND price >= $${paramIndex}`;
+      params.push(minPrice);
+      paramIndex++;
+    }
+    if (maxPrice) {
+      query += ` AND price <= $${paramIndex}`;
+      params.push(maxPrice);
+      paramIndex++;
+    }
+    if (inStock === 'true') {
+      query += ` AND stock > 0`;
+    }
+
     query += " ORDER BY id";
     const result = await pool.query(query, params);
     res.json(result.rows);
@@ -104,7 +119,7 @@ app.post("/checkout", async (req, res) => {
     }
     
     const orderRes = await client.query(
-      "INSERT INTO orders (status, total_amount) VALUES ('Reserved', $1) RETURNING *",
+      "INSERT INTO orders (status, total_amount) VALUES ('Pending', $1) RETURNING *",
       [totalAmount]
     );
     const orderId = orderRes.rows[0].id;
@@ -117,6 +132,8 @@ app.post("/checkout", async (req, res) => {
         [orderId, item.productId, item.quantity, productRes.rows[0].price]
       );
     }
+    
+    await client.query("UPDATE orders SET status = 'Reserved', updated_at = NOW() WHERE id = $1", [orderId]);
     await client.query("COMMIT");
     res.json({ orderId, status: "Reserved", totalAmount });
   } catch (err) {

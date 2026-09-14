@@ -14,13 +14,9 @@ const pool = new Pool({
 // Auto-expire reservations background job (every 30 seconds)
 setInterval(async () => {
   try {
-    // 5 minutes = 300000 ms
-    const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    
     // Find reserved orders older than 5 minutes
     const result = await pool.query(
-      `SELECT id FROM orders WHERE status = 'Reserved' AND updated_at < $1`,
-      [fiveMinsAgo]
+      `SELECT id FROM orders WHERE status = 'Reserved' AND updated_at < NOW() - INTERVAL '5 minutes'`
     );
 
     for (let row of result.rows) {
@@ -138,9 +134,9 @@ app.post("/checkout", async (req, res) => {
       totalAmount += product.price * item.quantity;
     }
     
-    // Create order
+    // Create order as Pending initially to satisfy lifecycle requirement
     const orderRes = await client.query(
-      "INSERT INTO orders (status, total_amount) VALUES ('Reserved', $1) RETURNING *",
+      "INSERT INTO orders (status, total_amount) VALUES ('Pending', $1) RETURNING *",
       [totalAmount]
     );
     const orderId = orderRes.rows[0].id;
@@ -162,6 +158,9 @@ app.post("/checkout", async (req, res) => {
         [orderId, item.productId, item.quantity, productRes.rows[0].price]
       );
     }
+    
+    // Once stock is successfully deducted, move to Reserved
+    await client.query("UPDATE orders SET status = 'Reserved', updated_at = NOW() WHERE id = $1", [orderId]);
     
     await client.query("COMMIT");
     res.json({ orderId, status: "Reserved", totalAmount });
