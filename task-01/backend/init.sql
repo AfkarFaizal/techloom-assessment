@@ -31,10 +31,8 @@ CREATE TABLE IF NOT EXISTS payments (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert dummy products so your store isn't empty!
 INSERT INTO products (name, price, stock) VALUES 
 ('Laptop', 999.99, 10),
 ('Wireless Mouse', 25.50, 50),
 ('Mechanical Keyboard', 85.00, 20),
-('Monitor', 200.00, 15)
-ON CONFLICT DO NOTHING;
+('Monitor', 200.00, 15);
