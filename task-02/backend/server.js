@@ -24,7 +24,9 @@ setInterval(async () => {
         await client.query("BEGIN");
         const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [row.id]);
         for (let item of items.rows) {
-          await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+          if (item.product_id) {
+            await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+          }
         }
         await client.query("UPDATE orders SET status = 'Expired', updated_at = NOW() WHERE id = $1", [row.id]);
         await client.query("COMMIT");
@@ -210,7 +212,9 @@ app.post(["/payment", "/orders/:id/pay"], async (req, res) => {
     if (newOrderStatus === "Failed" || newOrderStatus === "Expired") {
       const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [orderId]);
       for (let item of items.rows) {
-        await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+        if (item.product_id) {
+          await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+        }
       }
     }
     await client.query("COMMIT");
@@ -232,7 +236,7 @@ app.get("/orders", async (req, res) => {
     // Fetch items for each order
     for (let order of orders) {
       const itemsRes = await pool.query(
-        "SELECT oi.product_id, oi.quantity as qty, p.name as product_name FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
+        "SELECT oi.product_id, oi.quantity as qty, COALESCE(p.name, 'Deleted Product') as product_name FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
         [order.id]
       );
       order.items = itemsRes.rows;
@@ -266,7 +270,9 @@ app.post("/orders/:id/cancel", async (req, res) => {
     
     const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [id]);
     for (let item of items.rows) {
-      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+      if (item.product_id) {
+        await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+      }
     }
     
     await client.query("COMMIT");

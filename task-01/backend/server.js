@@ -31,10 +31,12 @@ setInterval(async () => {
         );
         
         for (let item of items.rows) {
-          await client.query(
-            "UPDATE products SET stock = stock + $1 WHERE id = $2",
-            [item.quantity, item.product_id]
-          );
+          if (item.product_id) {
+            await client.query(
+              "UPDATE products SET stock = stock + $1 WHERE id = $2",
+              [item.quantity, item.product_id]
+            );
+          }
         }
         
         await client.query(
@@ -100,12 +102,20 @@ app.put("/products/:id", async (req, res) => {
 });
 
 app.delete("/products/:id", async (req, res) => {
+  const client = await pool.connect();
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM products WHERE id = $1", [id]);
+    await client.query("BEGIN");
+    // Remove foreign key references in order_items without deleting historical order data
+    await client.query("UPDATE order_items SET product_id = NULL WHERE product_id = $1", [id]);
+    await client.query("DELETE FROM products WHERE id = $1", [id]);
+    await client.query("COMMIT");
     res.json({ message: "Product deleted" });
   } catch (err) {
+    await client.query("ROLLBACK");
     res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
   }
 });
 
@@ -255,10 +265,12 @@ app.post(["/payment", "/orders/:id/pay"], async (req, res) => {
     if (newOrderStatus === "Failed" || newOrderStatus === "Expired") {
       const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [orderId]);
       for (let item of items.rows) {
-        await client.query(
-          "UPDATE products SET stock = stock + $1 WHERE id = $2",
-          [item.quantity, item.product_id]
-        );
+        if (item.product_id) {
+          await client.query(
+            "UPDATE products SET stock = stock + $1 WHERE id = $2",
+            [item.quantity, item.product_id]
+          );
+        }
       }
     }
     
@@ -287,7 +299,9 @@ app.post("/orders/:id/cancel", async (req, res) => {
     // Release stock
     const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [id]);
     for (let item of items.rows) {
-      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+      if (item.product_id) {
+        await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+      }
     }
     
     // Update status to Cancelled
@@ -311,7 +325,7 @@ app.get("/orders", async (req, res) => {
       // Fetch items for each order
       for (let order of orders) {
         const itemsRes = await pool.query(
-          "SELECT oi.product_id, oi.quantity as qty, p.name as product_name FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
+          "SELECT oi.product_id, oi.quantity as qty, COALESCE(p.name, 'Deleted Product') as product_name FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
           [order.id]
         );
         order.items = itemsRes.rows;
