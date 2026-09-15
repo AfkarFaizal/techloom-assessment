@@ -37,10 +37,15 @@ setInterval(async () => {
   } catch (err) {}
 }, 30000);
 
+// Product Categories (Mock)
+app.get("/products/categories", async (req, res) => {
+  res.json(["Electronics", "Accessories", "Peripherals"]);
+});
+
 // Product Listing with search and filters
 app.get("/products", async (req, res) => {
   try {
-    const { search, minPrice, maxPrice, inStock } = req.query;
+    const { search, minPrice, maxPrice, inStock, category } = req.query;
     let query = "SELECT * FROM products WHERE 1=1";
     let params = [];
     let paramIndex = 1;
@@ -66,7 +71,16 @@ app.get("/products", async (req, res) => {
 
     query += " ORDER BY id";
     const result = await pool.query(query, params);
-    res.json(result.rows);
+    
+    // Map stock to available and add mock category/description for HTML template compatibility
+    const products = result.rows.map(p => ({
+      ...p,
+      available: p.stock,
+      category: "Electronics",
+      description: "A great product."
+    }));
+    
+    res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -98,8 +112,8 @@ app.post("/products", async (req, res) => {
 });
 
 // Checkout
-app.post("/checkout", async (req, res) => {
-  const { cart } = req.body; 
+app.post(["/checkout", "/cart/checkout"], async (req, res) => {
+  const cart = req.body.cart || req.body.items || []; 
   if (!cart || cart.length === 0) return res.status(400).json({ error: "Cart is empty" });
 
   const client = await pool.connect();
@@ -108,14 +122,16 @@ app.post("/checkout", async (req, res) => {
     let totalAmount = 0;
     
     for (let item of cart) {
+      const productId = item.productId || item.product_id;
+      const quantity = item.quantity || item.qty;
       const productRes = await client.query(
         "SELECT id, price, stock FROM products WHERE id = $1 FOR UPDATE",
-        [item.productId]
+        [productId]
       );
-      if (productRes.rows.length === 0) throw new Error(`Product ${item.productId} not found`);
+      if (productRes.rows.length === 0) throw new Error(`Product ${productId} not found`);
       const product = productRes.rows[0];
-      if (product.stock < item.quantity) throw new Error(`Not enough stock for product ${item.productId}`);
-      totalAmount += product.price * item.quantity;
+      if (product.stock < quantity) throw new Error(`Not enough stock for product ${productId}`);
+      totalAmount += product.price * quantity;
     }
     
     const orderRes = await client.query(
@@ -125,11 +141,13 @@ app.post("/checkout", async (req, res) => {
     const orderId = orderRes.rows[0].id;
     
     for (let item of cart) {
-      const productRes = await client.query("SELECT price FROM products WHERE id = $1", [item.productId]);
-      await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [item.quantity, item.productId]);
+      const productId = item.productId || item.product_id;
+      const quantity = item.quantity || item.qty;
+      const productRes = await client.query("SELECT price FROM products WHERE id = $1", [productId]);
+      await client.query("UPDATE products SET stock = stock - $1 WHERE id = $2", [quantity, productId]);
       await client.query(
         "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)",
-        [orderId, item.productId, item.quantity, productRes.rows[0].price]
+        [orderId, productId, quantity, productRes.rows[0].price]
       );
     }
     
@@ -145,8 +163,10 @@ app.post("/checkout", async (req, res) => {
 });
 
 // Payment
-app.post("/payment", async (req, res) => {
-  const { orderId, idempotencyKey, outcome } = req.body;
+app.post(["/payment", "/orders/:id/pay"], async (req, res) => {
+  const orderId = req.body.orderId || req.params.id;
+  const idempotencyKey = req.body.idempotencyKey || req.body.idempotencyKey;
+  const outcome = req.body.outcome;
   
   if (!orderId || !idempotencyKey || !outcome) return res.status(400).json({ error: "Missing required fields" });
   
@@ -207,7 +227,24 @@ app.post("/payment", async (req, res) => {
 app.get("/orders", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM orders ORDER BY created_at DESC");
-    res.json(result.rows);
+    const orders = result.rows;
+      
+    // Fetch items for each order
+    for (let order of orders) {
+      const itemsRes = await pool.query(
+        "SELECT oi.product_id, oi.quantity as qty, p.name as product_name FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
+        [order.id]
+      );
+      order.items = itemsRes.rows;
+      order.total = parseFloat(order.total_amount); // for frontend compatibility
+      
+      // Calculate expiresAt for Reserved orders
+      if (order.status === 'Reserved') {
+        order.expiresAt = new Date(order.updated_at).getTime() + (5 * 60 * 1000);
+      }
+    }
+    
+    res.json(orders);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

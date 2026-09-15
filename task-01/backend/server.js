@@ -60,7 +60,13 @@ setInterval(async () => {
 app.get("/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products ORDER BY id");
-    res.json(result.rows);
+    // Map stock to available and add reserved for HTML template compatibility
+    const products = result.rows.map(p => ({
+      ...p,
+      available: p.stock,
+      reserved: 0
+    }));
+    res.json(products);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -104,8 +110,9 @@ app.delete("/products/:id", async (req, res) => {
 });
 
 // Checkout and Reserve Stock
-app.post("/checkout", async (req, res) => {
-  const { cart } = req.body; // array of { productId, quantity }
+app.post(["/checkout", "/cart/checkout"], async (req, res) => {
+  // map `items` to `cart` if called from the provided HTML
+  const cart = req.body.cart || req.body.items || [];
   if (!cart || cart.length === 0) return res.status(400).json({ error: "Cart is empty" });
 
   const client = await pool.connect();
@@ -116,22 +123,24 @@ app.post("/checkout", async (req, res) => {
     
     // Check stock for all items
     for (let item of cart) {
+      const productId = item.productId || item.product_id;
+      const quantity = item.quantity || item.qty;
       // Concurrency safe: SELECT ... FOR UPDATE
       const productRes = await client.query(
         "SELECT id, price, stock FROM products WHERE id = $1 FOR UPDATE",
-        [item.productId]
+        [productId]
       );
       
       if (productRes.rows.length === 0) {
-        throw new Error(`Product ${item.productId} not found`);
+        throw new Error(`Product ${productId} not found`);
       }
       
       const product = productRes.rows[0];
-      if (product.stock < item.quantity) {
-        throw new Error(`Not enough stock for product ${item.productId}`);
+      if (product.stock < quantity) {
+        throw new Error(`Not enough stock for product ${productId}`);
       }
       
-      totalAmount += product.price * item.quantity;
+      totalAmount += product.price * quantity;
     }
     
     // Create order as Pending initially to satisfy lifecycle requirement
@@ -143,19 +152,22 @@ app.post("/checkout", async (req, res) => {
     
     // Deduct stock and insert order items
     for (let item of cart) {
+      const productId = item.productId || item.product_id;
+      const quantity = item.quantity || item.qty;
+      
       const productRes = await client.query(
         "SELECT price FROM products WHERE id = $1",
-        [item.productId]
+        [productId]
       );
       
       await client.query(
         "UPDATE products SET stock = stock - $1 WHERE id = $2",
-        [item.quantity, item.productId]
+        [quantity, productId]
       );
       
       await client.query(
         "INSERT INTO order_items (order_id, product_id, quantity, price) VALUES ($1, $2, $3, $4)",
-        [orderId, item.productId, item.quantity, productRes.rows[0].price]
+        [orderId, productId, quantity, productRes.rows[0].price]
       );
     }
     
@@ -173,8 +185,10 @@ app.post("/checkout", async (req, res) => {
 });
 
 // Payment Processing (Mock)
-app.post("/payment", async (req, res) => {
-  const { orderId, idempotencyKey, outcome } = req.body;
+app.post(["/payment", "/orders/:id/pay"], async (req, res) => {
+  const orderId = req.body.orderId || req.params.id;
+  const idempotencyKey = req.body.idempotencyKey || req.body.idempotencyKey;
+  const outcome = req.body.outcome;
   
   if (!orderId || !idempotencyKey || !outcome) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -292,7 +306,24 @@ app.post("/orders/:id/cancel", async (req, res) => {
 app.get("/orders", async (req, res) => {
     try {
       const result = await pool.query("SELECT * FROM orders ORDER BY created_at DESC");
-      res.json(result.rows);
+      const orders = result.rows;
+      
+      // Fetch items for each order
+      for (let order of orders) {
+        const itemsRes = await pool.query(
+          "SELECT oi.product_id, oi.quantity as qty, p.name as product_name FROM order_items oi JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1",
+          [order.id]
+        );
+        order.items = itemsRes.rows;
+        
+        // Calculate expiresAt for Reserved orders
+        if (order.status === 'Reserved') {
+          order.expiresAt = new Date(order.updated_at).getTime() + (5 * 60 * 1000);
+        }
+        order.total = parseFloat(order.total_amount);
+      }
+      
+      res.json(orders);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
