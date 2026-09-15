@@ -1,19 +1,19 @@
 {
-  "name": "backend",
+  "name": "ecommerce-checkout-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "E-commerce checkout, payment and refund backend (MongoDB)",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "type": "commonjs",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node index.js",
+    "test": "node test-concurrency.js"
+  },
   "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "pg": "^8.23.0"
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongodb": "^6.9.0",
+    "uuid": "^9.0.1"
   }
 }

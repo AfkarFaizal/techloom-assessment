@@ -1,318 +1,198 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8" />
-  <title>POS Order & Inventory System</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    :root {
-      --bg: #0f172a;
-      --card: #1e293b;
-      --accent: #38bdf8;
-      --good: #22c55e;
-      --bad: #ef4444;
-      --warn: #f59e0b;
-      --text: #e2e8f0;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      font-family: system-ui, Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 24px;
-    }
-
-    h1 {
-      font-size: 22px;
-    }
-
-    h2 {
-      font-size: 16px;
-      color: var(--accent);
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-    }
-
-    .card {
-      background: var(--card);
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 16px;
-    }
-
-    input,
-    button,
-    select {
-      padding: 8px;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: var(--text);
-    }
-
-    button {
-      cursor: pointer;
-      background: var(--accent);
-      color: #0f172a;
-      font-weight: 600;
-      border: none;
-    }
-
-    button.secondary {
-      background: #334155;
-      color: var(--text);
-    }
-
-    button.danger {
-      background: var(--bad);
-      color: white;
-    }
-
-    button:disabled {
-      opacity: .4;
-      cursor: not-allowed;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    td,
-    th {
-      padding: 6px;
-      border-bottom: 1px solid #334155;
-      text-align: left;
-    }
-
-    .badge {
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .Reserved {
-      background: var(--warn);
-      color: #000;
-    }
-
-    .Paid {
-      background: var(--good);
-      color: #000;
-    }
-
-    .Cancelled,
-    .Failed,
-    .Expired {
-      background: var(--bad);
-      color: #fff;
-    }
-
-    .row {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-
-    .timer {
-      color: var(--warn);
-      font-weight: 600;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>POS Order & Inventory System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root{--bg:#0f172a;--card:#1e293b;--accent:#38bdf8;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--text:#e2e8f0;}
+  *{box-sizing:border-box;}
+  body{font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px;}
+  h1{font-size:22px;} h2{font-size:16px;color:var(--accent);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+  .card{background:var(--card);border-radius:10px;padding:16px;margin-bottom:16px;}
+  input,button,select{padding:8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:var(--text);}
+  button{cursor:pointer;background:var(--accent);color:#0f172a;font-weight:600;border:none;}
+  button.secondary{background:#334155;color:var(--text);}
+  button.danger{background:var(--bad);color:white;}
+  button:disabled{opacity:.4;cursor:not-allowed;}
+  table{width:100%;border-collapse:collapse;font-size:14px;}
+  td,th{padding:6px;border-bottom:1px solid #334155;text-align:left;}
+  .badge{padding:2px 8px;border-radius:10px;font-size:12px;font-weight:600;}
+  .Reserved{background:var(--warn);color:#000;}
+  .Paid{background:var(--good);color:#000;}
+  .Cancelled,.Failed,.Expired{background:var(--bad);color:#fff;}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;}
+  .timer{color:var(--warn);font-weight:600;}
+</style>
 </head>
-
 <body>
-  <h1>🧾 POS Order & Inventory System</h1>
-  <p id="apiNote" style="color:#94a3b8;font-size:13px;"></p>
+<h1>🧾 POS Order & Inventory System</h1>
+<p id="apiNote" style="color:#94a3b8;font-size:13px;"></p>
 
-  <div class="grid">
-    <div>
-      <div class="card">
-        <h2 id="formTitle">Add Product</h2>
-        <div class="row">
-          <input id="pName" placeholder="Name" />
-          <input id="pPrice" placeholder="Price" type="number" />
-          <input id="pStock" placeholder="Stock" type="number" />
-          <button id="saveBtn" onclick="saveProduct()">Add</button>
-          <button id="cancelEditBtn" class="secondary" style="display:none" onclick="cancelEdit()">Cancel</button>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Products</h2>
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Price</th>
-              <th>Available</th>
-              <th>Reserved</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody id="productRows"></tbody>
-        </table>
-      </div>
-      <div class="card">
-        <h2>Cart</h2>
-        <div id="cartRows"></div>
-        <button onclick="checkout()">Checkout Cart → Reserve Stock</button>
+<div class="grid">
+  <div>
+    <div class="card">
+      <h2 id="formTitle">Add Product</h2>
+      <div class="row">
+        <input id="pName" placeholder="Name" />
+        <input id="pPrice" placeholder="Price" type="number" />
+        <input id="pStock" placeholder="Stock" type="number" />
+        <button id="saveBtn" onclick="saveProduct()">Add</button>
+        <button id="cancelEditBtn" class="secondary" style="display:none" onclick="cancelEdit()">Cancel</button>
       </div>
     </div>
-
-    <div>
-      <div class="card">
-        <h2>Active / Recent Orders</h2>
-        <div id="orderRows"></div>
-      </div>
+    <div class="card">
+      <h2>Products</h2>
+      <table><thead><tr><th>Name</th><th>Price</th><th>Available</th><th>Reserved</th><th></th></tr></thead>
+      <tbody id="productRows"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Cart</h2>
+      <div id="cartRows"></div>
+      <button onclick="checkout()">Checkout Cart → Reserve Stock</button>
     </div>
   </div>
 
-  <script src="./config.js"></script>
-  <script>
-    const API = window.API_BASE || 'http://localhost:5000';
-    document.getElementById('apiNote').textContent = 'Backend API: ' + API + ' (edit API_BASE in index.html or set it before deploy)';
-    let cart = {}; // productId -> qty
+  <div>
+    <div class="card">
+      <h2>Active / Recent Orders</h2>
+      <div id="orderRows"></div>
+    </div>
+  </div>
+</div>
 
-    async function api(path, opts = {}) {
-      const res = await fetch(API + path, {
-        headers: { 'Content-Type': 'application/json' },
-        ...opts
-      });
-      return res.json();
-    }
+<script src="./config.js"></script>
+<script>
+const API = window.API_BASE || 'http://localhost:4001';
+document.getElementById('apiNote').textContent = 'Backend API: ' + API + ' (edit API_BASE in index.html or set it before deploy)';
+let cart = {}; // productId -> qty
 
-    async function loadProducts() {
-      const products = await api('/products');
-      const rows = document.getElementById('productRows');
-      rows.innerHTML = '';
-      products.forEach(p => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.name}</td><td>$${p.price}</td><td>${p.available}</td><td>${p.reserved}</td>
-      <td><button ${p.available <= 0 ? 'disabled' : ''} onclick="addToCart('${p.id}')">+ cart</button>
-      <button class="secondary" onclick="startEdit('${p.id}','${p.name.replace(/'/g, "\\'")}',${p.price},${p.stock})">edit</button>
+async function api(path, opts={}) {
+  const res = await fetch(API + path, {
+    headers: {'Content-Type':'application/json'},
+    ...opts
+  });
+  return res.json();
+}
+
+async function loadProducts(){
+  const products = await api('/products');
+  const rows = document.getElementById('productRows');
+  rows.innerHTML = '';
+  products.forEach(p => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${p.name}</td><td>$${p.price}</td><td>${p.available}</td><td>${p.reserved}</td>
+      <td><button ${p.available<=0?'disabled':''} onclick="addToCart('${p.id}')">+ cart</button>
+      <button class="secondary" onclick="startEdit('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price},${p.stock})">edit</button>
       <button class="danger" onclick="deleteProduct('${p.id}')">del</button></td>`;
-        rows.appendChild(tr);
-      });
-      renderCart(products);
-    }
+    rows.appendChild(tr);
+  });
+  renderCart(products);
+}
 
-    function addToCart(id) { cart[id] = (cart[id] || 0) + 1; loadProducts(); }
-    function removeFromCart(id) { delete cart[id]; loadProducts(); }
+function addToCart(id){ cart[id] = (cart[id]||0)+1; loadProducts(); }
+function removeFromCart(id){ delete cart[id]; loadProducts(); }
 
-    function renderCart(products) {
-      const div = document.getElementById('cartRows');
-      const entries = Object.entries(cart);
-      if (entries.length === 0) { div.innerHTML = '<p style="color:#64748b">Cart is empty</p>'; return; }
-      div.innerHTML = entries.map(([id, qty]) => {
-        const p = products.find(p => p.id === id);
-        return `<div class="row">${p ? p.name : id} × ${qty} <button class="secondary" onclick="removeFromCart('${id}')">remove</button></div>`;
-      }).join('');
-    }
+function renderCart(products){
+  const div = document.getElementById('cartRows');
+  const entries = Object.entries(cart);
+  if(entries.length===0){ div.innerHTML = '<p style="color:#64748b">Cart is empty</p>'; return; }
+  div.innerHTML = entries.map(([id,qty])=>{
+    const p = products.find(p=>p.id===id);
+    return `<div class="row">${p?p.name:id} × ${qty} <button class="secondary" onclick="removeFromCart('${id}')">remove</button></div>`;
+  }).join('');
+}
 
-    let editingId = null; // null = Add mode, otherwise Update mode for this product id
+let editingId = null; // null = Add mode, otherwise Update mode for this product id
 
-    function startEdit(id, name, price, stock) {
-      editingId = id;
-      document.getElementById('pName').value = name;
-      document.getElementById('pPrice').value = price;
-      document.getElementById('pStock').value = stock;
-      document.getElementById('formTitle').textContent = 'Edit Product';
-      document.getElementById('saveBtn').textContent = 'Update';
-      document.getElementById('cancelEditBtn').style.display = 'inline-block';
-    }
+function startEdit(id, name, price, stock){
+  editingId = id;
+  document.getElementById('pName').value = name;
+  document.getElementById('pPrice').value = price;
+  document.getElementById('pStock').value = stock;
+  document.getElementById('formTitle').textContent = 'Edit Product';
+  document.getElementById('saveBtn').textContent = 'Update';
+  document.getElementById('cancelEditBtn').style.display = 'inline-block';
+}
 
-    function cancelEdit() {
-      editingId = null;
-      document.getElementById('pName').value = ''; document.getElementById('pPrice').value = ''; document.getElementById('pStock').value = '';
-      document.getElementById('formTitle').textContent = 'Add Product';
-      document.getElementById('saveBtn').textContent = 'Add';
-      document.getElementById('cancelEditBtn').style.display = 'none';
-    }
+function cancelEdit(){
+  editingId = null;
+  document.getElementById('pName').value=''; document.getElementById('pPrice').value=''; document.getElementById('pStock').value='';
+  document.getElementById('formTitle').textContent = 'Add Product';
+  document.getElementById('saveBtn').textContent = 'Add';
+  document.getElementById('cancelEditBtn').style.display = 'none';
+}
 
-    async function saveProduct() {
-      const name = document.getElementById('pName').value;
-      const price = parseFloat(document.getElementById('pPrice').value);
-      const stock = parseInt(document.getElementById('pStock').value);
-      if (!name || isNaN(price) || isNaN(stock)) return alert('Fill all fields');
+async function saveProduct(){
+  const name = document.getElementById('pName').value;
+  const price = parseFloat(document.getElementById('pPrice').value);
+  const stock = parseInt(document.getElementById('pStock').value);
+  if(!name || isNaN(price) || isNaN(stock)) return alert('Fill all fields');
 
-      if (editingId) {
-        // Update (the "U" in CRUD) — calls PUT /products/:id
-        await api('/products/' + editingId, { method: 'PUT', body: JSON.stringify({ name, price, stock }) });
-      } else {
-        // Create — calls POST /products
-        await api('/products', { method: 'POST', body: JSON.stringify({ name, price, stock }) });
-      }
-      cancelEdit();
-      loadProducts();
-    }
+  if (editingId) {
+    // Update (the "U" in CRUD) — calls PUT /products/:id
+    await api('/products/' + editingId, {method:'PUT', body: JSON.stringify({name, price, stock})});
+  } else {
+    // Create — calls POST /products
+    await api('/products', {method:'POST', body: JSON.stringify({name, price, stock})});
+  }
+  cancelEdit();
+  loadProducts();
+}
 
-    async function deleteProduct(id) { await api('/products/' + id, { method: 'DELETE' }); loadProducts(); }
+async function deleteProduct(id){ await api('/products/'+id, {method:'DELETE'}); loadProducts(); }
 
-    async function checkout() {
-      const items = Object.entries(cart).map(([productId, qty]) => ({ productId, qty }));
-      if (items.length === 0) return alert('Cart empty');
-      const res = await api('/cart/checkout', { method: 'POST', body: JSON.stringify({ items }) });
-      if (res.error) { alert(res.error); return; }
-      cart = {};
-      loadProducts();
-      loadOrders();
-    }
+async function checkout(){
+  const items = Object.entries(cart).map(([productId,qty])=>({productId, qty}));
+  if(items.length===0) return alert('Cart empty');
+  const res = await api('/cart/checkout', {method:'POST', body: JSON.stringify({items})});
+  if(res.error) { alert(res.error); return; }
+  cart = {};
+  loadProducts();
+  loadOrders();
+}
 
-    async function payOrder(id, outcome) {
-      const idempotencyKey = id + '-' + outcome; // same key => same attempt is deduped server-side
-      const res = await api(`/orders/${id}/pay`, { method: 'POST', body: JSON.stringify({ outcome, idempotencyKey }) });
-      loadProducts(); loadOrders();
-    }
+async function payOrder(id, outcome){
+  const idempotencyKey = id + '-' + outcome; // same key => same attempt is deduped server-side
+  const res = await api(`/orders/${id}/pay`, {method:'POST', body: JSON.stringify({outcome, idempotencyKey})});
+  loadProducts(); loadOrders();
+}
 
-    async function cancelOrder(id) {
-      await api(`/orders/${id}/cancel`, { method: 'POST' });
-      loadProducts(); loadOrders();
-    }
+async function cancelOrder(id){
+  await api(`/orders/${id}/cancel`, {method:'POST'});
+  loadProducts(); loadOrders();
+}
 
-    function fmtCountdown(ms) {
-      if (ms <= 0) return 'expired';
-      const s = Math.floor(ms / 1000);
-      return `${Math.floor(s / 60)}m ${s % 60}s`;
-    }
+function fmtCountdown(ms){
+  if(ms<=0) return 'expired';
+  const s = Math.floor(ms/1000);
+  return `${Math.floor(s/60)}m ${s%60}s`;
+}
 
-    async function loadOrders() {
-      const orders = await api('/orders');
-      const div = document.getElementById('orderRows');
-      div.innerHTML = orders.slice(0, 15).map(o => {
-        const items = o.items.map(i => `${i.qty}×${i.product_id.slice(0, 6)}`).join(', ');
-        const countdown = o.status === 'Reserved' && o.expiresAt ? `<span class="timer">${fmtCountdown(o.expiresAt - Date.now())}</span>` : '';
-        const actions = o.status === 'Reserved' ? `
+async function loadOrders(){
+  const orders = await api('/orders');
+  const div = document.getElementById('orderRows');
+  div.innerHTML = orders.slice(0,15).map(o=>{
+    const items = o.items.map(i=>`${i.qty}×${i.productId.slice(0,6)}`).join(', ');
+    const countdown = o.status==='Reserved' && o.expiresAt ? `<span class="timer">${fmtCountdown(o.expiresAt-Date.now())}</span>` : '';
+    const actions = o.status==='Reserved' ? `
       <button onclick="payOrder('${o.id}','success')">Pay ✓</button>
       <button class="secondary" onclick="payOrder('${o.id}','failure')">Pay ✗ (fail)</button>
       <button class="secondary" onclick="payOrder('${o.id}','timeout')">Pay ⧗ (timeout)</button>
       <button class="danger" onclick="cancelOrder('${o.id}')">Cancel</button>` :
-          (o.status === 'Paid' ? `<button class="danger" onclick="cancelOrder('${o.id}')">Cancel / Refund</button>` : '');
-        return `<div class="card" style="margin-bottom:8px;">
-      <div class="row"><b>${o.id.slice(0, 8)}</b> <span class="badge ${o.status}">${o.status}</span> ${countdown}</div>
+      (o.status==='Paid' ? `<button class="danger" onclick="cancelOrder('${o.id}')">Cancel / Refund</button>` : '');
+    return `<div class="card" style="margin-bottom:8px;">
+      <div class="row"><b>${o.id.slice(0,8)}</b> <span class="badge ${o.status}">${o.status}</span> ${countdown}</div>
       <div style="font-size:13px;color:#94a3b8;">${items} — total $${o.total}</div>
       <div class="row" style="margin-top:6px;">${actions}</div>
     </div>`;
-      }).join('') || '<p style="color:#64748b">No orders yet</p>';
-    }
+  }).join('') || '<p style="color:#64748b">No orders yet</p>';
+}
 
-    loadProducts();
-    loadOrders();
-    setInterval(() => { loadProducts(); loadOrders(); }, 4000); // refresh so countdown/expiry stay live
-  </script>
+loadProducts();
+loadOrders();
+setInterval(()=>{ loadProducts(); loadOrders(); }, 4000); // refresh so countdown/expiry stay live
+</script>
 </body>
-
 </html>

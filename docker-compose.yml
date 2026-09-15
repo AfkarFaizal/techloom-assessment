@@ -1,0 +1,42 @@
+version: '3.8'
+
+services:
+  task-01-backend:
+    build:
+      context: ./task-01/backend
+      dockerfile: Dockerfile
+    ports:
+      - "4001:4001"
+    environment:
+      - PORT=4001
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DB_NAME=pos_inventory
+    restart: unless-stopped
+
+  task-02-backend:
+    build:
+      context: ./task-02/backend
+      dockerfile: Dockerfile
+    ports:
+      - "4002:4002"
+    environment:
+      - PORT=4002
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DB_NAME=ecommerce_shop
+    restart: unless-stopped
+
+  task-01-frontend:
+    image: nginx:alpine
+    volumes:
+      - ./task-01/frontend:/usr/share/nginx/html:ro
+    ports:
+      - "3001:80"
+    restart: unless-stopped
+
+  task-02-frontend:
+    image: nginx:alpine
+    volumes:
+      - ./task-02/frontend:/usr/share/nginx/html:ro
+    ports:
+      - "3002:80"
+    restart: unless-stopped
