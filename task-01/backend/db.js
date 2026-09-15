@@ -13,6 +13,7 @@ if (!uri) {
 const client = new MongoClient(uri);
 let dbInstance = null;
 
+
 // Call this once at startup (and anywhere you need the db handle). Safe to call
 // multiple times — it reuses the same connection after the first call.
 async function connect() {
