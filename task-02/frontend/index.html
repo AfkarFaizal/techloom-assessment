@@ -2,34 +2,131 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>E-Commerce Checkout & Payment</title>
+<title>E-Commerce Checkout & Payment System</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/htm@3/dist/htm.umd.js"></script>
 <style>
-  :root{--bg:#0b1020;--card:#161c33;--accent:#a78bfa;--good:#22c55e;--bad:#ef4444;--warn:#f59e0b;--text:#e5e7eb;}
-  *{box-sizing:border-box;}
-  body{font-family:system-ui,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;}
-  header{padding:16px 24px;background:#0f1530;position:sticky;top:0;display:flex;gap:16px;align-items:center;flex-wrap:wrap;z-index:5;}
-  header input,header select{padding:8px;border-radius:6px;border:1px solid #2a3155;background:#0b1020;color:var(--text);}
-  main{padding:24px;max-width:1100px;margin:0 auto;}
-  .tabs{display:flex;gap:8px;margin-bottom:16px;}
-  .tab{padding:8px 14px;border-radius:20px;cursor:pointer;background:#1e2545;font-size:14px;}
-  .tab.active{background:var(--accent);color:#0b1020;font-weight:600;}
-  .gridp{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;}
-  .card{background:var(--card);border-radius:12px;padding:14px;}
-  .price{color:var(--accent);font-weight:700;}
-  button{cursor:pointer;border:none;border-radius:6px;padding:8px 12px;font-weight:600;background:var(--accent);color:#0b1020;}
-  button.secondary{background:#2a3155;color:var(--text);}
-  button.danger{background:var(--bad);color:#fff;}
-  button:disabled{opacity:.4;cursor:not-allowed;}
-  .badge{padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;}
-  .Reserved{background:var(--warn);color:#000;} .Paid{background:var(--good);color:#000;}
-  .Cancelled,.Failed,.Expired{background:var(--bad);color:#fff;}
-  .row{display:flex;justify-content:space-between;align-items:center;margin:6px 0;}
-  .timer{color:var(--warn);font-weight:700;}
-  .muted{color:#8b93b8;font-size:13px;}
+  :root {
+    --bg: #0b1020;
+    --card: #161c33;
+    --card-hover: #1c2442;
+    --accent: #a78bfa;
+    --accent-hover: #8b5cf6;
+    --good: #22c55e;
+    --bad: #ef4444;
+    --warn: #f59e0b;
+    --text: #f3f4f6;
+    --muted: #9ca3af;
+    --border: #2a3155;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 0;
+    line-height: 1.5;
+  }
+  header {
+    padding: 16px 24px;
+    background: #0f1530;
+    position: sticky;
+    top: 0;
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    flex-wrap: wrap;
+    z-index: 50;
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+  header input, header select {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: #0b1020;
+    color: var(--text);
+    font-size: 14px;
+  }
+  header input:focus, header select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  main { padding: 24px; max-width: 1200px; margin: 0 auto; }
+  .tabs { display: flex; gap: 10px; margin-bottom: 24px; }
+  .tab {
+    padding: 9px 18px;
+    border-radius: 20px;
+    cursor: pointer;
+    background: #1e2545;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+  }
+  .tab:hover { background: #28325a; }
+  .tab.active { background: var(--accent); color: #0b1020; font-weight: 700; }
+  .gridp { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.3); }
+  .product-image {
+    width: 100%;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    background: #232b4d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+  }
+  .price { color: var(--accent); font-weight: 700; font-size: 18px; margin: 4px 0; }
+  button {
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-weight: 600;
+    background: var(--accent);
+    color: #0b1020;
+    transition: all 0.2s ease;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); color: #fff; }
+  button.secondary { background: #2a3155; color: var(--text); }
+  button.secondary:hover:not(:disabled) { background: #3b4575; }
+  button.danger { background: var(--bad); color: #fff; }
+  button.danger:hover:not(:disabled) { background: #dc2626; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .badge { padding: 3px 9px; border-radius: 12px; font-size: 12px; font-weight: 700; }
+  .Reserved { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid #f59e0b; }
+  .Paid { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+  .Cancelled, .Failed, .Expired { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #ef4444; }
+  .row { display: flex; justify-content: space-between; align-items: center; margin: 6px 0; }
+  .timer { color: var(--warn); font-weight: 700; font-size: 13px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .filter-group { display: flex; align-items: center; gap: 8px; }
+  .alert-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 12px 20px;
+    background: #1e2545;
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: 8px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+    z-index: 100;
+  }
 </style>
 </head>
 <body>
@@ -41,153 +138,410 @@ const html = htm.bind(React.createElement);
 const { useState, useEffect, useCallback } = React;
 
 const API = window.API_BASE || 'http://localhost:4002';
-const USER_ID = 'demo-user'; // simplified: no auth for this assessment demo
+const USER_ID = 'demo-user';
 
-async function api(path, opts={}) {
-  const res = await fetch(API + path, { headers: {'Content-Type':'application/json'}, ...opts });
-  return res.json();
+async function api(path, opts = {}) {
+  try {
+    const res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...opts
+    });
+    if (res.status === 204) return null;
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  } catch (err) {
+    throw err;
+  }
 }
 
-function fmtCountdown(ms){
-  if(ms<=0) return 'expired';
-  const s = Math.floor(ms/1000);
-  return `${Math.floor(s/60)}m ${s%60}s`;
+function fmtCountdown(ms) {
+  if (ms <= 0) return 'Expired';
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}m ${s % 60}s`;
 }
 
-function App(){
+function App() {
   const [tab, setTab] = useState('shop');
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
+  const [minPrice, setMinPrice] = useState('');
   const [maxPrice, setMaxPrice] = useState('');
-  const [cart, setCart] = useState({}); // id -> qty
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [cart, setCart] = useState({}); // productId -> qty
   const [orders, setOrders] = useState([]);
   const [detail, setDetail] = useState(null);
-  const [, force] = useState(0);
+  const [toast, setToast] = useState(null);
+  const [, forceUpdate] = useState(0);
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const loadProducts = useCallback(async () => {
-    const q = new URLSearchParams();
-    if(search) q.set('search', search);
-    if(category) q.set('category', category);
-    if(maxPrice) q.set('maxPrice', maxPrice);
-    setProducts(await api('/products?' + q.toString()));
-  }, [search, category, maxPrice]);
+    try {
+      const q = new URLSearchParams();
+      if (search) q.set('search', search);
+      if (category) q.set('category', category);
+      if (minPrice) q.set('minPrice', minPrice);
+      if (maxPrice) q.set('maxPrice', maxPrice);
+      if (inStockOnly) q.set('inStock', 'true');
+      const data = await api('/products?' + q.toString());
+      setProducts(data || []);
+    } catch (err) {
+      console.error('Failed to load products:', err.message);
+    }
+  }, [search, category, minPrice, maxPrice, inStockOnly]);
 
   const loadOrders = useCallback(async () => {
-    setOrders(await api('/orders?userId=' + USER_ID));
+    try {
+      const data = await api('/orders?userId=' + USER_ID);
+      setOrders(data || []);
+    } catch (err) {
+      console.error('Failed to load orders:', err.message);
+    }
   }, []);
 
-  useEffect(() => { api('/products/categories').then(setCategories); loadOrders(); }, []);
-  useEffect(() => { loadProducts(); }, [loadProducts]);
-  useEffect(() => { const t = setInterval(() => { loadOrders(); force(x=>x+1); }, 4000); return () => clearInterval(t); }, [loadOrders]);
+  useEffect(() => {
+    api('/products/categories')
+      .then(cats => setCategories(cats || []))
+      .catch(() => {});
+    loadOrders();
+  }, [loadOrders]);
 
-  const addToCart = (id) => setCart(c => ({...c, [id]: (c[id]||0)+1}));
-  const removeFromCart = (id) => setCart(c => { const n = {...c}; delete n[id]; return n; });
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      loadOrders();
+      forceUpdate(x => x + 1);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [loadOrders]);
+
+  const addToCart = (id) => {
+    const p = products.find(x => x.id === id);
+    const cur = cart[id] || 0;
+    if (p && cur >= p.available) {
+      return showToast(`Only ${p.available} items available in stock!`);
+    }
+    setCart(c => ({ ...c, [id]: cur + 1 }));
+    showToast(`Added ${p ? p.name : 'item'} to cart!`);
+  };
+
+  const removeFromCart = (id) => {
+    setCart(c => {
+      const n = { ...c };
+      delete n[id];
+      return n;
+    });
+  };
 
   const checkout = async () => {
-    const items = Object.entries(cart).map(([productId, qty]) => ({productId, qty}));
-    if(items.length===0) return alert('Cart is empty');
-    const res = await api('/cart/checkout', {method:'POST', body: JSON.stringify({userId: USER_ID, items})});
-    if(res.error){ alert(res.error); return; }
-    setCart({});
-    await loadProducts(); await loadOrders();
-    setTab('orders');
+    const items = Object.entries(cart).map(([productId, qty]) => ({ productId, qty }));
+    if (items.length === 0) return alert('Cart is empty');
+
+    try {
+      const res = await api('/cart/checkout', {
+        method: 'POST',
+        body: JSON.stringify({ userId: USER_ID, items })
+      });
+      setCart({});
+      await loadProducts();
+      await loadOrders();
+      setTab('orders');
+      showToast(`Order #${res.id.slice(0, 8)} reserved! Stock locked for 5 minutes.`);
+    } catch (err) {
+      alert('Checkout Failed: ' + err.message);
+    }
   };
 
   const pay = async (id, outcome) => {
-    await api(`/orders/${id}/pay`, {method:'POST', body: JSON.stringify({outcome, idempotencyKey: id+'-'+outcome})});
-    await loadProducts(); await loadOrders();
+    try {
+      const idempotencyKey = id + '-' + outcome;
+      const res = await api(`/orders/${id}/pay`, {
+        method: 'POST',
+        body: JSON.stringify({ outcome, idempotencyKey })
+      });
+      if (res.duplicate) {
+        showToast(`Duplicate payment rejected: Result is already ${res.result}.`);
+      } else {
+        showToast(`Payment ${res.outcome.toUpperCase()}! Order is now ${res.order.status}.`);
+      }
+      await loadProducts();
+      await loadOrders();
+    } catch (err) {
+      alert('Payment Error: ' + err.message);
+    }
   };
+
   const cancel = async (id) => {
-    await api(`/orders/${id}/cancel`, {method:'POST'});
-    await loadProducts(); await loadOrders();
+    if (!confirm('Cancel this order? (If paid, a full refund will be simulated and stock returned)')) return;
+    try {
+      const res = await api(`/orders/${id}/cancel`, { method: 'POST' });
+      showToast(`Order cancelled. Status: ${res.status}`);
+      await loadProducts();
+      await loadOrders();
+    } catch (err) {
+      alert('Cancellation Error: ' + err.message);
+    }
   };
+
+  const cartItemCount = Object.values(cart).reduce((a, b) => a + b, 0);
+  const cartTotal = Object.entries(cart).reduce((sum, [id, qty]) => {
+    const p = products.find(x => x.id === id);
+    return sum + (p ? p.price * qty : 0);
+  }, 0);
 
   return html`
     <div>
       <header>
-        <b>🛒 MiniShop</b>
-        <input placeholder="Search products..." value=${search} onInput=${e=>setSearch(e.target.value)} />
-        <select value=${category} onChange=${e=>setCategory(e.target.value)}>
-          <option value="">All categories</option>
-          ${categories.map(c => html`<option value=${c}>${c}</option>`)}
-        </select>
-        <input placeholder="Max price" type="number" style=${{width:'100px'}} value=${maxPrice} onInput=${e=>setMaxPrice(e.target.value)} />
-        <div style=${{marginLeft:'auto'}}>Cart: ${Object.values(cart).reduce((a,b)=>a+b,0)} items</div>
-      </header>
-      <main>
-        <div class="tabs">
-          <div class=${'tab ' + (tab==='shop'?'active':'')} onClick=${()=>setTab('shop')}>Shop</div>
-          <div class=${'tab ' + (tab==='cart'?'active':'')} onClick=${()=>setTab('cart')}>Cart & Checkout</div>
-          <div class=${'tab ' + (tab==='orders'?'active':'')} onClick=${()=>setTab('orders')}>Order History</div>
+        <div style=${{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style=${{ fontSize: '22px' }}>🛒</span>
+          <b style=${{ fontSize: '18px', color: 'var(--accent)' }}>MiniShop</b>
         </div>
 
-        ${tab==='shop' && html`
-          <div class="gridp">
-            ${products.map(p => html`
-              <div class="card">
-                <div style=${{fontWeight:600}}>${p.name}</div>
-                <div class="muted">${p.category}</div>
-                <div class="price">$${p.price.toFixed(2)}</div>
-                <div class="muted">${p.available>0 ? p.available+' in stock' : 'Out of stock'}</div>
-                <div class="row">
-                  <button class="secondary" onClick=${()=>setDetail(p)}>Details</button>
-                  <button disabled=${p.available<=0} onClick=${()=>addToCart(p.id)}>Add to cart</button>
-                </div>
-              </div>
-            `)}
-          </div>
-        `}
+        <!-- Search Input -->
+        <input
+          placeholder="Search products..."
+          value=${search}
+          onInput=${e => setSearch(e.target.value)}
+          style=${{ width: '200px' }}
+        />
 
-        ${tab==='cart' && html`
-          <div class="card">
-            <h3>Your cart</h3>
-            ${Object.keys(cart).length===0 && html`<p class="muted">Cart is empty</p>`}
-            ${Object.entries(cart).map(([id,qty]) => {
-              const p = products.find(p=>p.id===id);
-              return html`<div class="row"><span>${p?p.name:id} × ${qty}</span><button class="secondary" onClick=${()=>removeFromCart(id)}>remove</button></div>`;
-            })}
-            ${Object.keys(cart).length>0 && html`<button onClick=${checkout} style=${{marginTop:'10px'}}>Checkout → Reserve stock (5 min hold)</button>`}
-          </div>
-        `}
+        <!-- Category Filter -->
+        <select value=${category} onChange=${e => setCategory(e.target.value)}>
+          <option value="">All categories</option>
+          ${categories.map(c => html`<option key=${c} value=${c}>${c}</option>`)}
+        </select>
 
-        ${tab==='orders' && html`
+        <!-- Price Range Filters -->
+        <div class="filter-group">
+          <input
+            placeholder="Min $"
+            type="number"
+            style=${{ width: '75px' }}
+            value=${minPrice}
+            onInput=${e => setMinPrice(e.target.value)}
+          />
+          <span class="muted">-</span>
+          <input
+            placeholder="Max $"
+            type="number"
+            style=${{ width: '75px' }}
+            value=${maxPrice}
+            onInput=${e => setMaxPrice(e.target.value)}
+          />
+        </div>
+
+        <!-- Availability Toggle -->
+        <label style=${{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked=${inStockOnly}
+            onChange=${e => setInStockOnly(e.target.checked)}
+          />
+          In Stock Only
+        </label>
+
+        <!-- Cart Badge in Header -->
+        <div style=${{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button class="secondary" onClick=${() => setTab('cart')}>
+            🛍️ Cart: <b>${cartItemCount}</b> items ($${cartTotal.toFixed(2)})
+          </button>
+        </div>
+      </header>
+
+      <main>
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+          <div class=${'tab ' + (tab === 'shop' ? 'active' : '')} onClick=${() => setTab('shop')}>
+            🛍️ Storefront
+          </div>
+          <div class=${'tab ' + (tab === 'cart' ? 'active' : '')} onClick=${() => setTab('cart')}>
+            🛒 Cart (${cartItemCount})
+          </div>
+          <div class=${'tab ' + (tab === 'orders' ? 'active' : '')} onClick=${() => setTab('orders')}>
+            📋 Order History (${orders.length})
+          </div>
+        </div>
+
+        <!-- 1. Storefront View -->
+        ${tab === 'shop' && html`
           <div>
-            ${orders.length===0 && html`<p class="muted">No orders yet</p>`}
-            ${orders.map(o => html`
-              <div class="card" style=${{marginBottom:'10px'}}>
-                <div class="row">
-                  <b>#${o.id.slice(0,8)}</b>
-                  <span class=${'badge ' + o.status}>${o.status}${o.refunded ? ' (refunded)' : ''}</span>
+            ${products.length === 0 && html`
+              <div class="card" style=${{ textAlign: 'center', padding: '40px', color: 'var(--muted)' }}>
+                No products found matching your search and filter criteria.
+              </div>
+            `}
+            <div class="gridp">
+              ${products.map(p => html`
+                <div class="card" key=${p.id}>
+                  <div class="product-image">
+                    📦
+                  </div>
+                  <div style=${{ fontWeight: 700, fontSize: '16px' }}>${p.name}</div>
+                  <div class="muted" style=${{ fontSize: '12px', marginTop: '2px' }}>Category: ${p.category}</div>
+                  <div class="price">$${Number(p.price).toFixed(2)}</div>
+                  <div class="muted" style=${{ marginBottom: '14px' }}>
+                    ${p.available > 0
+                      ? html`<span style=${{ color: 'var(--good)', fontWeight: 600 }}>✓ ${p.available} in stock</span>`
+                      : html`<span style=${{ color: 'var(--bad)', fontWeight: 600 }}>✗ Out of stock</span>`
+                    }
+                  </div>
+                  <div class="row" style=${{ marginTop: 'auto', gap: '8px' }}>
+                    <button class="secondary" style=${{ flex: 1 }} onClick=${() => setDetail(p)}>Details</button>
+                    <button
+                      style=${{ flex: 2 }}
+                      disabled=${p.available <= 0}
+                      onClick=${() => addToCart(p.id)}
+                    >
+                      ${p.available <= 0 ? 'Out of Stock' : '+ Add to Cart'}
+                    </button>
+                  </div>
                 </div>
-                <div class="muted">${o.items.map(i=>`${i.qty}× ${i.productName}`).join(', ')} — total $${o.total.toFixed(2)}</div>
-                ${o.status==='Reserved' && o.expiresAt && html`<div class="timer">Expires in ${fmtCountdown(o.expiresAt-Date.now())}</div>`}
-                <div class="row" style=${{marginTop:'8px', gap:'8px'}}>
-                  ${o.status==='Reserved' && html`
-                    <button onClick=${()=>pay(o.id,'success')}>Pay ✓</button>
-                    <button class="secondary" onClick=${()=>pay(o.id,'failure')}>Pay ✗ fail</button>
-                    <button class="secondary" onClick=${()=>pay(o.id,'timeout')}>Pay ⧗ timeout</button>
-                    <button class="danger" onClick=${()=>cancel(o.id)}>Cancel</button>
+              `)}
+            </div>
+          </div>
+        `}
+
+        <!-- 2. Cart View -->
+        ${tab === 'cart' && html`
+          <div class="card" style=${{ maxWidth: '650px', margin: '0 auto' }}>
+            <h3 style=${{ marginTop: 0 }}>Your Shopping Cart</h3>
+            ${Object.keys(cart).length === 0 && html`
+              <p class="muted">Your cart is currently empty. Go to the Storefront to add items!</p>
+            `}
+            ${Object.entries(cart).map(([id, qty]) => {
+              const p = products.find(x => x.id === id);
+              const price = p ? Number(p.price) : 0;
+              const subtotal = price * qty;
+              return html`
+                <div class="row" key=${id} style=${{ padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div>
+                    <b>${p ? p.name : id}</b>
+                    <div class="muted">$${price.toFixed(2)} × ${qty} = <b>$${subtotal.toFixed(2)}</b></div>
+                  </div>
+                  <div style=${{ display: 'flex', gap: '6px' }}>
+                    <button class="secondary" style=${{ padding: '4px 10px' }} onClick=${() => addToCart(id)}>+</button>
+                    <button class="secondary" style=${{ padding: '4px 10px' }} onClick=${() => removeFromCart(id)}>Remove</button>
+                  </div>
+                </div>
+              `;
+            })}
+
+            ${Object.keys(cart).length > 0 && html`
+              <div style=${{ marginTop: '20px' }}>
+                <div class="row" style=${{ fontSize: '18px', fontWeight: 700, color: 'var(--accent)' }}>
+                  <span>Total Due:</span>
+                  <span>$${cartTotal.toFixed(2)}</span>
+                </div>
+                <button
+                  onClick=${checkout}
+                  style=${{ width: '100%', marginTop: '14px', padding: '12px', fontSize: '16px' }}
+                >
+                  Checkout → Lock Stock (5-Minute Hold)
+                </button>
+              </div>
+            `}
+          </div>
+        `}
+
+        <!-- 3. Order History View -->
+        ${tab === 'orders' && html`
+          <div>
+            ${orders.length === 0 && html`
+              <div class="card" style=${{ textAlign: 'center', padding: '30px', color: 'var(--muted)' }}>
+                No past orders found for this user.
+              </div>
+            `}
+            ${orders.map(o => html`
+              <div class="card" style=${{ marginBottom: '14px' }} key=${o.id}>
+                <div class="row">
+                  <div>
+                    <b style=${{ fontSize: '16px' }}>Order #${o.id.slice(0, 8)}</b>
+                    <span class=${'badge ' + o.status} style=${{ marginLeft: '8px' }}>
+                      ${o.status}${o.refunded ? ' (Refunded)' : ''}
+                    </span>
+                  </div>
+                  ${o.status === 'Reserved' && o.expiresAt && html`
+                    <div class="timer">⏳ Expires in ${fmtCountdown(o.expiresAt - Date.now())}</div>
                   `}
-                  ${o.status==='Paid' && html`<button class="danger" onClick=${()=>cancel(o.id)}>Cancel & Refund</button>`}
+                </div>
+
+                <div class="muted" style=${{ margin: '8px 0' }}>
+                  Items: ${(o.items || []).map(i => `${i.qty}× ${i.productName || i.name}`).join(', ')} —
+                  <b style=${{ color: 'var(--text)' }}> Total: $${Number(o.total || 0).toFixed(2)}</b>
+                </div>
+
+                <div class="row" style=${{ marginTop: '10px', gap: '8px', flexWrap: 'wrap' }}>
+                  ${o.status === 'Reserved' && html`
+                    <button onClick=${() => pay(o.id, 'success')}>Pay ✓ (Success)</button>
+                    <button class="secondary" onClick=${() => pay(o.id, 'failure')}>Pay ✗ (Fail)</button>
+                    <button class="secondary" onClick=${() => pay(o.id, 'timeout')}>Pay ⧗ (Timeout)</button>
+                    <button class="danger" onClick=${() => cancel(o.id)}>Cancel Order</button>
+                  `}
+                  ${o.status === 'Paid' && html`
+                    <button class="danger" onClick=${() => cancel(o.id)}>Cancel & Refund</button>
+                  `}
                 </div>
               </div>
             `)}
           </div>
         `}
 
+        <!-- Product Details Modal -->
         ${detail && html`
-          <div style=${{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',display:'flex',alignItems:'center',justifyContent:'center'}} onClick=${()=>setDetail(null)}>
-            <div class="card" style=${{maxWidth:'400px'}} onClick=${e=>e.stopPropagation()}>
-              <h3>${detail.name}</h3>
-              <p class="muted">${detail.description}</p>
-              <p>Category: ${detail.category}</p>
-              <p class="price">$${detail.price.toFixed(2)}</p>
-              <p class="muted">${detail.available} available</p>
-              <button onClick=${()=>{addToCart(detail.id); setDetail(null);}} disabled=${detail.available<=0}>Add to cart</button>
-              <button class="secondary" onClick=${()=>setDetail(null)}>Close</button>
+          <div
+            style=${{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 100,
+              padding: '16px'
+            }}
+            onClick=${() => setDetail(null)}
+          >
+            <div class="card" style=${{ maxWidth: '440px', width: '100%' }} onClick=${e => e.stopPropagation()}>
+              <h2 style=${{ color: 'var(--accent)', marginTop: 0 }}>${detail.name}</h2>
+              <p style=${{ fontSize: '14px', color: 'var(--muted)' }}>${detail.description || 'No description provided.'}</p>
+              <div class="row">
+                <span class="muted">Category:</span>
+                <b>${detail.category}</b>
+              </div>
+              <div class="row">
+                <span class="muted">Unit Price:</span>
+                <span class="price">$${Number(detail.price).toFixed(2)}</span>
+              </div>
+              <div class="row">
+                <span class="muted">Available Stock:</span>
+                <b>${detail.available}</b>
+              </div>
+              <div class="row" style=${{ marginTop: '20px', gap: '10px' }}>
+                <button
+                  style=${{ flex: 2 }}
+                  onClick=${() => { addToCart(detail.id); setDetail(null); }}
+                  disabled=${detail.available <= 0}
+                >
+                  ${detail.available <= 0 ? 'Out of Stock' : 'Add to Cart'}
+                </button>
+                <button class="secondary" style=${{ flex: 1 }} onClick=${() => setDetail(null)}>Close</button>
+              </div>
             </div>
+          </div>
+        `}
+
+        ${toast && html`
+          <div class="alert-toast">
+            ${toast}
           </div>
         `}
       </main>
