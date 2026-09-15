@@ -175,7 +175,6 @@ app.post("/checkout", async (req, res) => {
 // Payment Processing (Mock)
 app.post("/payment", async (req, res) => {
   const { orderId, idempotencyKey, outcome } = req.body;
-  // outcome can be 'success', 'failure', 'timeout'
   
   if (!orderId || !idempotencyKey || !outcome) {
     return res.status(400).json({ error: "Missing required fields" });
@@ -185,7 +184,7 @@ app.post("/payment", async (req, res) => {
   try {
     await client.query("BEGIN");
     
-    // Check idempotency (prevent duplicate payment)
+    // Check idempotency
     const existingPayment = await client.query(
       "SELECT * FROM payments WHERE idempotency_key = $1",
       [idempotencyKey]
@@ -193,7 +192,6 @@ app.post("/payment", async (req, res) => {
     
     if (existingPayment.rows.length > 0) {
       await client.query("ROLLBACK");
-      // Return previous result instead of charging again
       return res.json({ message: "Duplicate payment attempt", payment: existingPayment.rows[0] });
     }
     
@@ -212,12 +210,20 @@ app.post("/payment", async (req, res) => {
       throw new Error(`Order cannot be paid. Current status: ${order.status}`);
     }
     
-    if (outcome === "timeout") {
-      throw new Error("Payment gateway timeout");
+    let paymentStatus, newOrderStatus;
+
+    if (outcome === "success") {
+      paymentStatus = "Success";
+      newOrderStatus = "Paid";
+    } else if (outcome === "failure") {
+      paymentStatus = "Failed";
+      newOrderStatus = "Failed";
+    } else if (outcome === "timeout") {
+      paymentStatus = "Timeout";
+      newOrderStatus = "Expired"; // Expire reservation on timeout
+    } else {
+      throw new Error("Invalid outcome");
     }
-    
-    const paymentStatus = outcome === "success" ? "Success" : "Failed";
-    const newOrderStatus = outcome === "success" ? "Paid" : "Failed";
     
     // Record payment
     const paymentRecord = await client.query(
@@ -231,8 +237,8 @@ app.post("/payment", async (req, res) => {
       [newOrderStatus, orderId]
     );
     
-    // If failed, release the stock
-    if (newOrderStatus === "Failed") {
+    // If failed or timeout, release the stock
+    if (newOrderStatus === "Failed" || newOrderStatus === "Expired") {
       const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [orderId]);
       for (let item of items.rows) {
         await client.query(
@@ -244,6 +250,37 @@ app.post("/payment", async (req, res) => {
     
     await client.query("COMMIT");
     res.json({ message: `Payment ${paymentStatus}`, payment: paymentRecord.rows[0] });
+  } catch (err) {
+    await client.query("ROLLBACK");
+    res.status(400).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
+// Order Cancellation
+app.post("/orders/:id/cancel", async (req, res) => {
+  const { id } = req.params;
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const orderRes = await client.query("SELECT status FROM orders WHERE id = $1 FOR UPDATE", [id]);
+    if (orderRes.rows.length === 0) throw new Error("Order not found");
+    
+    const status = orderRes.rows[0].status;
+    if (status !== "Reserved") throw new Error(`Cannot cancel order in ${status} status`);
+    
+    // Release stock
+    const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [id]);
+    for (let item of items.rows) {
+      await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
+    }
+    
+    // Update status to Cancelled
+    await client.query("UPDATE orders SET status = 'Cancelled', updated_at = NOW() WHERE id = $1", [id]);
+    
+    await client.query("COMMIT");
+    res.json({ message: "Order cancelled and stock restored" });
   } catch (err) {
     await client.query("ROLLBACK");
     res.status(400).json({ error: err.message });

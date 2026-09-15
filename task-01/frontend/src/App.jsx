@@ -9,12 +9,15 @@ function App() {
   const [cart, setCart] = useState([]);
   const [orderStatus, setOrderStatus] = useState(null);
   const [orderId, setOrderId] = useState(null);
+  const [orders, setOrders] = useState([]);
   
   // Admin form state
   const [newProduct, setNewProduct] = useState({ name: '', price: '', stock: '' });
+  const [editingProduct, setEditingProduct] = useState(null);
 
   useEffect(() => {
     fetchProducts();
+    fetchOrders();
   }, []);
 
   const fetchProducts = async () => {
@@ -26,19 +29,42 @@ function App() {
     }
   };
 
-  const handleCreateProduct = async (e) => {
+  const fetchOrders = async () => {
+    try {
+      const res = await axios.get(`${API_URL}/orders`);
+      setOrders(res.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleCreateOrUpdateProduct = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${API_URL}/products`, {
-        name: newProduct.name,
-        price: parseFloat(newProduct.price),
-        stock: parseInt(newProduct.stock, 10)
-      });
+      if (editingProduct) {
+        await axios.put(`${API_URL}/products/${editingProduct.id}`, {
+          name: newProduct.name,
+          price: parseFloat(newProduct.price),
+          stock: parseInt(newProduct.stock, 10)
+        });
+        setEditingProduct(null);
+      } else {
+        await axios.post(`${API_URL}/products`, {
+          name: newProduct.name,
+          price: parseFloat(newProduct.price),
+          stock: parseInt(newProduct.stock, 10)
+        });
+      }
       setNewProduct({ name: '', price: '', stock: '' });
       fetchProducts();
     } catch (err) {
       alert(`Error: ${err.response?.data?.error || err.message}`);
     }
+  };
+
+  const handleEditClick = (p) => {
+    setEditingProduct(p);
+    setNewProduct({ name: p.name, price: p.price, stock: p.stock });
   };
 
   const handleDeleteProduct = async (id) => {
@@ -67,6 +93,7 @@ function App() {
       setOrderId(res.data.orderId);
       setCart([]);
       fetchProducts();
+      fetchOrders();
     } catch (err) {
       setOrderStatus(`Error: ${err.response?.data?.error || err.message}`);
     }
@@ -80,9 +107,21 @@ function App() {
       const res = await axios.post(`${API_URL}/payment`, { orderId, idempotencyKey, outcome });
       setOrderStatus(`Payment ${res.data.payment.status}`);
       fetchProducts();
+      fetchOrders();
     } catch (err) {
       setOrderStatus(`Payment Error: ${err.response?.data?.error || err.message}`);
       fetchProducts();
+      fetchOrders();
+    }
+  };
+
+  const cancelOrder = async (id) => {
+    try {
+      await axios.post(`${API_URL}/orders/${id}/cancel`);
+      fetchOrders();
+      fetchProducts();
+    } catch (err) {
+      alert(`Error: ${err.response?.data?.error || err.message}`);
     }
   };
 
@@ -91,12 +130,13 @@ function App() {
       <h1>POS Order & Inventory System</h1>
       
       <div className="admin-section">
-        <h2>Admin: Add Product</h2>
-        <form onSubmit={handleCreateProduct}>
+        <h2>{editingProduct ? 'Admin: Update Product' : 'Admin: Add Product'}</h2>
+        <form onSubmit={handleCreateOrUpdateProduct}>
           <input type="text" placeholder="Name" value={newProduct.name} onChange={e => setNewProduct({...newProduct, name: e.target.value})} required />
           <input type="number" step="0.01" placeholder="Price" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} required />
           <input type="number" placeholder="Stock" value={newProduct.stock} onChange={e => setNewProduct({...newProduct, stock: e.target.value})} required />
-          <button type="submit">Add Product</button>
+          <button type="submit">{editingProduct ? 'Update Product' : 'Add Product'}</button>
+          {editingProduct && <button type="button" onClick={() => { setEditingProduct(null); setNewProduct({ name: '', price: '', stock: '' }); }}>Cancel</button>}
         </form>
       </div>
 
@@ -107,6 +147,7 @@ function App() {
             <span>{p.name} - ${p.price} (Stock: {p.stock})</span>
             <div>
               <button onClick={() => addToCart(p)} disabled={p.stock === 0}>Add to Cart</button>
+              <button onClick={() => handleEditClick(p)} style={{marginLeft: '10px'}}>Edit</button>
               <button onClick={() => handleDeleteProduct(p.id)} style={{marginLeft: '10px', background: 'red', color: 'white'}}>Delete</button>
             </div>
           </div>
@@ -135,6 +176,18 @@ function App() {
           )}
         </div>
       )}
+
+      <div className="orders-section">
+        <h2>Order History</h2>
+        <ul>
+          {orders.map(o => (
+            <li key={o.id}>
+              Order #{o.id} - ${o.total_amount} - Status: {o.status}
+              {o.status === 'Reserved' && <button onClick={() => cancelOrder(o.id)} style={{marginLeft: '10px'}}>Cancel Order</button>}
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

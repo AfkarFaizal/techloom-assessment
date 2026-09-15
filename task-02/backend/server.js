@@ -163,10 +163,21 @@ app.post("/payment", async (req, res) => {
     if (orderRes.rows.length === 0) throw new Error("Order not found");
     const order = orderRes.rows[0];
     if (order.status !== "Reserved") throw new Error(`Order cannot be paid. Current status: ${order.status}`);
-    if (outcome === "timeout") throw new Error("Payment gateway timeout");
     
-    const paymentStatus = outcome === "success" ? "Success" : "Failed";
-    const newOrderStatus = outcome === "success" ? "Paid" : "Failed";
+    let paymentStatus, newOrderStatus;
+
+    if (outcome === "success") {
+      paymentStatus = "Success";
+      newOrderStatus = "Paid";
+    } else if (outcome === "failure") {
+      paymentStatus = "Failed";
+      newOrderStatus = "Failed";
+    } else if (outcome === "timeout") {
+      paymentStatus = "Timeout";
+      newOrderStatus = "Expired"; // Expire reservation on timeout
+    } else {
+      throw new Error("Invalid outcome");
+    }
     
     const paymentRecord = await client.query(
       "INSERT INTO payments (order_id, idempotency_key, status, amount) VALUES ($1, $2, $3, $4) RETURNING *",
@@ -175,7 +186,8 @@ app.post("/payment", async (req, res) => {
     
     await client.query("UPDATE orders SET status = $1, updated_at = NOW() WHERE id = $2", [newOrderStatus, orderId]);
     
-    if (newOrderStatus === "Failed") {
+    // If failed or timeout, release the stock
+    if (newOrderStatus === "Failed" || newOrderStatus === "Expired") {
       const items = await client.query("SELECT product_id, quantity FROM order_items WHERE order_id = $1", [orderId]);
       for (let item of items.rows) {
         await client.query("UPDATE products SET stock = stock + $1 WHERE id = $2", [item.quantity, item.product_id]);
