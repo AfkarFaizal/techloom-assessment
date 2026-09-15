@@ -179,7 +179,7 @@ npm test
    - Repeat for Task 02: Root Directory `task-02/backend`.
 
 2. **Deploy Frontends on Vercel / Netlify:**
-   - In `task-01/frontend/config.js`, set `window.API_BASE = "https://techloom-assessment-f6jc-git-main-mohomadafkar19-1758s-projects.vercel.app/"`.
+   - In `task-01/frontend/config.js`, set `window.API_BASE = "https://techloom-assessment-f6jc.vercel.app/"`.
    - In `task-02/frontend/config.js`, set `window.API_BASE = "https://techloom-assessment-41wn.vercel.app/"`.
    - Deploy `task-01/frontend` and `task-02/frontend` to Vercel as static sites.
 
