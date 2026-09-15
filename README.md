@@ -57,7 +57,7 @@ techloom-assessment/
 - **Frontend:**
   - **Task 01:** Pure Modern JavaScript, HTML5, CSS3 (No build step required)
   - **Task 02:** React 18 + `htm` via CDN (Zero-build client-side reactive components)
-- **DevOps & Containers:** Docker, Docker Compose, Render, Vercel/Netlify
+- **DevOps & Containers:** Docker, Docker Compose, Railway, Vercel
 
 ---
 
@@ -170,17 +170,17 @@ npm test
 
 ---
 
-## 🌐 Live Deployment Guide (Render & Vercel)
+## 🌐 Live Deployment Guide (Railway & Vercel)
 
-1. **Deploy Backends on Render:**
-   - Create a **Web Service** on Render pointing to your GitHub repo.
+1. **Deploy Backends on Railway:**
+   - Create a **Web Service** on Railway pointing to your GitHub repo.
    - For Task 01: Set Root Directory to `task-01/backend`, Build Command `npm install`, Start Command `node index.js`.
-   - Add Environment Variable: `MONGODB_URI = <your_atlas_connection_string>`.
+   - Add Environment Variable: `MONGODB_URI=mongodb+srv://test1:Cat@1234@cluster0.jwwftbt.mongodb.net/?appName=Cluster0/?retryWrites=true&w=majoritys`.
    - Repeat for Task 02: Root Directory `task-02/backend`.
+
 2. **Deploy Frontends on Vercel / Netlify:**
-   - In `task-01/frontend/config.js`, set `window.API_BASE = "https://your-task-01-backend.onrender.com"`.
-   - In `task-02/frontend/config.js`, set `window.API_BASE = "https://your-task-02-backend.onrender.com"`.
+   - In `task-01/frontend/config.js`, set `window.API_BASE = "https://techloom-assessment-f6jc-git-main-mohomadafkar19-1758s-projects.vercel.app/"`.
+   - In `task-02/frontend/config.js`, set `window.API_BASE = "https://techloom-assessment-41wn.vercel.app/"`.
    - Deploy `task-01/frontend` and `task-02/frontend` to Vercel as static sites.
 
 ---
-
