@@ -3,11 +3,13 @@
 ### 🔗 Project Links & Live Deployments
 - **GitHub Repository:** [https://github.com/AfkarFaizal/techloom-assessment](https://github.com/AfkarFaizal/techloom-assessment)
 - **Task 01 (POS Order & Inventory System):**
-  - **Live Backend (Render):** `https://task-01-pos-backend.onrender.com` *(Replace with your deployed URL)*
-  - **Live Frontend (Vercel / Netlify):** `https://task-01-pos-frontend.vercel.app` *(Replace with your deployed URL)*
-- **Task 02 (E-Commerce Storefront & Checkout System):**
-  - **Live Backend (Render):** `https://task-02-ecommerce-backend.onrender.com` *(Replace with your deployed URL)*
-  - **Live Frontend (Vercel / Netlify):** `https://task-02-ecommerce-frontend.vercel.app` *(Replace with your deployed URL)*
+  - **Live Backend (Railway):** `techloom-assessment-production-1ede.up.railway.app`(<https://railway.com/project/34b78014-f978-4cc3-8110-4f6a01171611/service/6e3f7c45-a362-4ab9-85c7-9944b2773430/settings?environmentId=d3280bb4-d617-41ea-b09e-2c89e5f10de5>) *(Replace with your deployed URL)*
+  - **Live Frontend (Vercel / Netlify):** (https://vercel.com/mohomadafkar19-1758s-projects/techloom-assessment-f6jc/HNCFYDEhk5ieKtTAjikUn8QYZe93) *(Replace with your deployed URL)*
+- 
+**Task 02 (E-Commerce Storefront & Checkout System):**
+
+- **Live Backend (Railway):** `techloom-assessment-task-2-2e50.up.railway.app` *(Replace with your deployed URL)*
+  - **Live Frontend (Vercel / Netlify):** https://vercel.com/mohomadafkar19-1758s-projects/techloom-assessment-41wn/96SdLmfDwKsGn7eikkFk4MC8LpP8 *(Replace with your deployed URL)*
 
 ---
 
@@ -168,18 +170,6 @@ npm test
 
 ---
 
-## 🐳 Docker Deployment (Optional)
-
-You can launch both backends and frontends simultaneously with Docker Compose:
-```bash
-# Ensure MONGODB_URI is set in .env
-docker-compose up --build
-```
-- Task 01 POS UI: `http://localhost:3001`
-- Task 02 Storefront UI: `http://localhost:3002`
-
----
-
 ## 🌐 Live Deployment Guide (Render & Vercel)
 
 1. **Deploy Backends on Render:**
@@ -191,3 +181,6 @@ docker-compose up --build
    - In `task-01/frontend/config.js`, set `window.API_BASE = "https://your-task-01-backend.onrender.com"`.
    - In `task-02/frontend/config.js`, set `window.API_BASE = "https://your-task-02-backend.onrender.com"`.
    - Deploy `task-01/frontend` and `task-02/frontend` to Vercel as static sites.
+
+---
+
